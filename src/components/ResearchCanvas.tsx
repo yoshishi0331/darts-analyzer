@@ -14,6 +14,8 @@ type CanvasBounds = {
 type ResearchCanvasProps = {
   boardHits: Point[];
   releasePoints: Point[];
+  showRelease?: boolean;
+  showBoard?: boolean;
   activeThrow?: number | null;
 };
 
@@ -52,7 +54,32 @@ function markerPosition(point: Point, rect: Rect): CanvasPoint {
   };
 }
 
-function getCanvasRects(width: number) {
+function getCanvasRects(width: number, showRelease: boolean, showBoard: boolean) {
+  // ボードのみ（グルーピング / 狙い精度）
+  if (!showRelease && showBoard) {
+    const boardSize = width * 0.82;
+    const boardRect: Rect = {
+      x: (width - boardSize) / 2,
+      y: (width - boardSize) / 2,
+      width: boardSize,
+      height: boardSize,
+    };
+    return { height: width, releaseRect: null, boardRect };
+  }
+
+  // リリースのみ（将来: 腕の角度などを追加予定）
+  if (showRelease && !showBoard) {
+    const height = width * 0.40;
+    const releaseRect: Rect = {
+      x: width * 0.06,
+      y: width * 0.06,
+      width: width * 0.88,
+      height: height - width * 0.12,
+    };
+    return { height, releaseRect, boardRect: null };
+  }
+
+  // 両方
   const height = width * 1.3;
   const releaseRect: Rect = {
     x: width * 0.08,
@@ -95,7 +122,13 @@ function ConnectionLine({ from, to, color }: { from: CanvasPoint; to: CanvasPoin
   );
 }
 
-export function ResearchCanvas({ boardHits, releasePoints, activeThrow = null }: ResearchCanvasProps) {
+export function ResearchCanvas({
+  boardHits,
+  releasePoints,
+  showRelease = true,
+  showBoard = true,
+  activeThrow = null,
+}: ResearchCanvasProps) {
   const [bounds, setBounds] = useState<CanvasBounds | null>(null);
   const canvasRef = useRef<View>(null);
 
@@ -106,7 +139,8 @@ export function ResearchCanvas({ boardHits, releasePoints, activeThrow = null }:
   };
 
   const width = bounds?.width ?? 320;
-  const { height, releaseRect, boardRect } = getCanvasRects(width);
+  const { height, releaseRect, boardRect } = getCanvasRects(width, showRelease, showBoard);
+
   const safeBoardHits =
     boardHits.length > 0 ? boardHits : [{ x: 0.5, y: 0.5 }, { x: 0.5, y: 0.5 }, { x: 0.5, y: 0.5 }];
   const safeReleasePoints =
@@ -116,51 +150,67 @@ export function ResearchCanvas({ boardHits, releasePoints, activeThrow = null }:
   const pairCount = Math.min(safeBoardHits.length, safeReleasePoints.length, markerColors.length);
   const averageRelease = average(safeReleasePoints.slice(0, pairCount));
 
+  const caption = showRelease && showBoard
+    ? "3投のリリース点と着弾点を重ねて、再現性とズレの関係を見返します。"
+    : showBoard
+    ? "3投の着弾点を重ねて、グルーピングを確認します。"
+    : "3投のリリース点を重ねて、リリース位置の安定性を確認します。";
+
   return (
     <View style={styles.wrapper}>
       <View ref={canvasRef} onLayout={handleLayout} style={[styles.canvas, { height }]}>
-        <View
-          style={[
-            styles.releaseZone,
-            {
-              left: releaseRect.x,
-              top: releaseRect.y,
-              width: releaseRect.width,
-              height: releaseRect.height,
-            },
-          ]}
-        >
-          <Text style={styles.zoneTitle}>{"\u30ea\u30ea\u30fc\u30b9\u70b9"}</Text>
-          <Text style={styles.zoneCaption}>
-            {"\u505c\u6b62\u30d5\u30ec\u30fc\u30e0\u4e0a\u306e\u7814\u7a76\u30dd\u30a4\u30f3\u30c8"}
-          </Text>
-        </View>
 
-        <View
-          style={[
-            styles.boardShell,
-            {
-              left: boardRect.x,
-              top: boardRect.y,
-              width: boardRect.width,
-              height: boardRect.height,
-            },
-          ]}
-        >
-          <BoardCanvas points={safeBoardHits.slice(0, pairCount)} markerSize={28} />
-        </View>
+        {/* ── リリースゾーン（背景） ── */}
+        {showRelease && releaseRect !== null && (
+          <View
+            style={[
+              styles.releaseZone,
+              {
+                left: releaseRect.x,
+                top: releaseRect.y,
+                width: releaseRect.width,
+                height: releaseRect.height,
+              },
+            ]}
+          >
+            <Text style={styles.zoneTitle}>リリース点</Text>
+            <Text style={styles.zoneCaption}>停止フレーム上の研究ポイント</Text>
+          </View>
+        )}
 
-        {safeReleasePoints.slice(0, pairCount).map((point, index) => {
+        {/* ── ボード ── */}
+        {showBoard && boardRect !== null && (
+          <View
+            style={[
+              styles.boardShell,
+              {
+                left: boardRect.x,
+                top: boardRect.y,
+                width: boardRect.width,
+                height: boardRect.height,
+              },
+            ]}
+          >
+            <BoardCanvas points={safeBoardHits.slice(0, pairCount)} markerSize={28} />
+          </View>
+        )}
+
+        {/* ── リリースマーカー ── */}
+        {showRelease && releaseRect !== null && safeReleasePoints.slice(0, pairCount).map((point, index) => {
           const releasePosition = markerPosition(point, releaseRect);
-          const hitPosition = markerPosition(safeBoardHits[index] ?? { x: 0.5, y: 0.5 }, boardRect);
 
           return (
-            <View key={`connection-${index}`}>
-              <ConnectionLine
-                from={releasePosition}
-                to={hitPosition}
-                color={`${markerColors[index]}88`}
-              />
+            <View key={`release-${index}`}>
+              {/* 接続線: ボードも表示されているときのみ */}
+              {showBoard && boardRect !== null && (
+                <ConnectionLine
+                  from={releasePosition}
+                  to={markerPosition(safeBoardHits[index] ?? { x: 0.5, y: 0.5 }, boardRect)}
+                  color={`${markerColors[index]}88`}
+                />
+              )}
+
+              {/* リリースマーカー */}
               <View
                 style={[
                   styles.markerWrap,
@@ -182,43 +232,47 @@ export function ResearchCanvas({ boardHits, releasePoints, activeThrow = null }:
                   <Text style={styles.markerText}>{index + 1}</Text>
                 </View>
               </View>
-              <View
-                style={[
-                  styles.hitMarkerWrap,
-                  {
-                    left: hitPosition.left,
-                    top: hitPosition.top,
-                    transform: [{ translateX: -14 }, { translateY: -14 }],
-                  },
-                ]}
-              >
-                <View style={[styles.hitMarker, { backgroundColor: markerColors[index] }]}>
-                  <Text style={styles.markerText}>{index + 1}</Text>
+
+              {/* 着弾マーカー: ボードも表示されているときのみ */}
+              {showBoard && boardRect !== null && (
+                <View
+                  style={[
+                    styles.hitMarkerWrap,
+                    {
+                      left: markerPosition(safeBoardHits[index] ?? { x: 0.5, y: 0.5 }, boardRect).left,
+                      top: markerPosition(safeBoardHits[index] ?? { x: 0.5, y: 0.5 }, boardRect).top,
+                      transform: [{ translateX: -14 }, { translateY: -14 }],
+                    },
+                  ]}
+                >
+                  <View style={[styles.hitMarker, { backgroundColor: markerColors[index] }]}>
+                    <Text style={styles.markerText}>{index + 1}</Text>
+                  </View>
                 </View>
-              </View>
+              )}
             </View>
           );
         })}
 
-        <View
-          style={[
-            styles.averageMarker,
-            {
-              left: markerPosition(averageRelease, releaseRect).left,
-              top: markerPosition(averageRelease, releaseRect).top,
-              transform: [{ translateX: -13 }, { translateY: -13 }],
-            },
-          ]}
-        >
-          <Text style={styles.averageLabel}>AVG</Text>
-        </View>
+        {/* ── AVGマーカー ── */}
+        {showRelease && releaseRect !== null && (
+          <View
+            style={[
+              styles.averageMarker,
+              {
+                left: markerPosition(averageRelease, releaseRect).left,
+                top: markerPosition(averageRelease, releaseRect).top,
+                transform: [{ translateX: -13 }, { translateY: -13 }],
+              },
+            ]}
+          >
+            <Text style={styles.averageLabel}>AVG</Text>
+          </View>
+        )}
+
       </View>
 
-      <Text style={styles.caption}>
-        {
-          "\u0033\u6295\u306e\u30ea\u30ea\u30fc\u30b9\u70b9\u3068\u7740\u5f3e\u70b9\u3092\u91cd\u306d\u3066\u3001\u518d\u73fe\u6027\u3068\u30ba\u30ec\u306e\u95a2\u4fc2\u3092\u898b\u8fd4\u3057\u307e\u3059\u3002"
-        }
-      </Text>
+      <Text style={styles.caption}>{caption}</Text>
     </View>
   );
 }

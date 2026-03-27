@@ -5,7 +5,7 @@ import { PrimaryButton } from "@/components/PrimaryButton";
 import { Screen } from "@/components/Screen";
 import { Stars } from "@/components/Stars";
 import { RootTabParamList } from "@/navigation/AppNavigator";
-import { toStars } from "@/domain/scoring";
+import { calcRecordTotalScore, getRank as getScoringRank, toStars } from "@/domain/scoring";
 import { AnalysisRecord } from "@/domain/types";
 import { useAppState } from "@/state/AppProvider";
 import { colors } from "@/theme/colors";
@@ -22,16 +22,6 @@ const MEDAL_R     = MEDAL_RING / 2;
 function average(values: number[]): number {
   if (values.length === 0) return 0;
   return Math.round(values.reduce((sum, v) => sum + v, 0) / values.length);
-}
-
-function getRank(score: number): Rank {
-  if (score >= 90) return "SS";
-  if (score >= 82) return "S";
-  if (score >= 74) return "A+";
-  if (score >= 66) return "A";
-  if (score >= 58) return "B+";
-  if (score >= 50) return "B";
-  return "C";
 }
 
 // ── RankMedal ────────────────────────────────────────────────────────────────
@@ -274,10 +264,7 @@ function MetricCard({
 
 // ── HomeScreen ───────────────────────────────────────────────────────────────
 function recordTotalScore(r: AnalysisRecord): number {
-  const g = r.groupingScore ?? 0;
-  const rel = r.releaseStabilityScore ?? 0;
-  const aim = r.aimAccuracyScore ?? 0;
-  return Math.round(g * 0.4 + rel * 0.4 + aim * 0.2);
+  return calcRecordTotalScore(r.groupingScore, r.releaseStabilityScore, r.aimAccuracyScore) ?? 0;
 }
 
 export function HomeScreen({ navigation }: Props) {
@@ -286,22 +273,25 @@ export function HomeScreen({ navigation }: Props) {
     .filter((r) => r.mode === "detail")
     .slice(0, 10);
 
-  const releaseScore = average(
-    recentDetailRecords
-      .map((r) => r.releaseStabilityScore)
-      .filter((s): s is number => typeof s === "number"),
-  );
-  const groupingScore = average(
-    recentDetailRecords
-      .map((r) => r.groupingScore)
-      .filter((s): s is number => typeof s === "number"),
-  );
-  const aimScore = average(
-    recentDetailRecords
-      .map((r) => r.aimAccuracyScore)
-      .filter((s): s is number => typeof s === "number"),
-  );
-  const formScore = average(recentDetailRecords.map(recordTotalScore));
+  // 各指標は測定したセッションのみから平均。データなし→undefined（「--」表示）
+  const releaseScoreValues = recentDetailRecords
+    .map((r) => r.releaseStabilityScore)
+    .filter((s): s is number => typeof s === "number");
+  const releaseScore = releaseScoreValues.length > 0 ? average(releaseScoreValues) : undefined;
+
+  const groupingScoreValues = recentDetailRecords
+    .map((r) => r.groupingScore)
+    .filter((s): s is number => typeof s === "number");
+  const groupingScore = groupingScoreValues.length > 0 ? average(groupingScoreValues) : undefined;
+
+  const aimScoreValues = recentDetailRecords
+    .map((r) => r.aimAccuracyScore)
+    .filter((s): s is number => typeof s === "number");
+  const aimScore = aimScoreValues.length > 0 ? average(aimScoreValues) : undefined;
+
+  const formScore = recentDetailRecords.length > 0
+    ? average(recentDetailRecords.map(recordTotalScore))
+    : 0;
 
   const delta =
     recentDetailRecords.length >= 2
@@ -309,7 +299,7 @@ export function HomeScreen({ navigation }: Props) {
       : 0;
 
   const overallScore = formScore;
-  const rank = getRank(overallScore);
+  const rank = getScoringRank(overallScore);
 
   return (
     <Screen
@@ -322,9 +312,9 @@ export function HomeScreen({ navigation }: Props) {
       <View style={styles.metricRow}>
         {/* Top metallic shine strip */}
         <View style={styles.metricRowShine} pointerEvents="none" />
-        <MetricCard title="狙い精度" value={aimScore || undefined} />
-        <MetricCard title="リリース安定" value={releaseScore || undefined} />
-        <MetricCard title="グルーピング" value={groupingScore || undefined} compact />
+        <MetricCard title="狙い精度" value={aimScore} />
+        <MetricCard title="リリース安定" value={releaseScore} />
+        <MetricCard title="グルーピング" value={groupingScore} compact />
       </View>
 
       <View style={styles.actions}>

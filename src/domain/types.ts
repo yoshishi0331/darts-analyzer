@@ -3,6 +3,21 @@ export type Handedness = "right" | "left";
 export type ThrowIndex = 0 | 1 | 2;
 export type BodyPart = "wrist" | "elbow" | "shoulderArm" | "release";
 
+export type ThrowWindow = {
+  startMillis: number | null;
+  endMillis: number | null;
+  releaseMillis: number | null;
+  releasePoint: { x: number; y: number };
+  impactPoint: { x: number; y: number } | null;
+};
+
+export type SessionConfig = {
+  targetLabel: TargetLabel | null;
+  measureGrouping: boolean;
+  measureRelease: boolean;
+  measureAim: boolean;
+};
+
 // Normalized coordinates in the range [0, 1].
 export type Point = {
   x: number;

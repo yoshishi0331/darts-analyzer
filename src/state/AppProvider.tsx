@@ -15,6 +15,9 @@ type SaveDetailPayload = {
   memo: string;
   videoUri?: string;
   detailInputState: DetailInputState;
+  measureGrouping: boolean;
+  measureRelease: boolean;
+  measureAim: boolean;
 };
 
 type SaveResult = {
@@ -33,6 +36,7 @@ type AppContextValue = {
   setSelectedThrow: (value: number) => void;
   setSelectedBodyPart: (value: BodyPart) => void;
   saveDetailAnalysis: (payload: SaveDetailPayload) => Promise<SaveResult>;
+  clearAllData: () => void;
 };
 
 const AppContext = createContext<AppContextValue | undefined>(undefined);
@@ -95,19 +99,30 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       memo,
       videoUri,
       detailInputState,
+      measureGrouping,
+      measureRelease,
+      measureAim,
     }: SaveDetailPayload): Promise<SaveResult> => {
-      const groupingScore = mockAnalysisEngine.computeGroupingScore(detailInputState.boardHits);
-      const releaseStabilityScore = mockAnalysisEngine.computeReleaseStabilityScore(
-        detailInputState.releasePoints,
-      );
+      const groupingScore = measureGrouping
+        ? mockAnalysisEngine.computeGroupingScore(detailInputState.boardHits)
+        : undefined;
+      const releaseStabilityScore = measureRelease
+        ? mockAnalysisEngine.computeReleaseStabilityScore(detailInputState.releasePoints)
+        : undefined;
       const { targetLabel, targetPoint } = detailInputState;
-      const aimAccuracyScore = targetLabel != null && targetPoint != null
+      const aimAccuracyScore = measureAim && targetLabel != null && targetPoint != null
         ? mockAnalysisEngine.computeAimAccuracyScore(detailInputState.boardHits, targetPoint)
         : undefined;
-      // 合計スコア計算（グルーピング×0.4 ＋ リリース安定×0.4 ＋ 狙い精度×0.2）
-      const totalScore = Math.round(
-        groupingScore * 0.4 + releaseStabilityScore * 0.4 + (aimAccuracyScore ?? 0) * 0.2,
-      );
+
+      // 測定済み指標のみで重み割り直し
+      const weightedScores: { score: number; weight: number }[] = [];
+      if (groupingScore !== undefined) weightedScores.push({ score: groupingScore, weight: 0.4 });
+      if (releaseStabilityScore !== undefined) weightedScores.push({ score: releaseStabilityScore, weight: 0.4 });
+      if (aimAccuracyScore !== undefined) weightedScores.push({ score: aimAccuracyScore, weight: 0.2 });
+      const totalWeight = weightedScores.reduce((s, e) => s + e.weight, 0);
+      const totalScore = totalWeight > 0
+        ? Math.round(weightedScores.reduce((s, e) => s + e.score * e.weight, 0) / totalWeight)
+        : 0;
 
       const record: AnalysisRecord = {
         id: createRecordId("detail"),
@@ -127,11 +142,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         records: sortNewestFirst([record, ...activeState.records]),
       });
 
-      const aimMsg = aimAccuracyScore != null ? ` / 狙い精度 ${aimAccuracyScore}点` : "";
+      const parts: string[] = [];
+      if (groupingScore !== undefined) parts.push(`グルーピング ${groupingScore}点`);
+      if (releaseStabilityScore !== undefined) parts.push(`リリース安定 ${releaseStabilityScore}点`);
+      if (aimAccuracyScore !== undefined) parts.push(`狙い精度 ${aimAccuracyScore}点`);
       return {
         ok: true,
-        message: `解析を保存しました。グルーピング ${groupingScore}点 / リリース安定度 ${releaseStabilityScore}点${aimMsg} / 合計 ${totalScore}点`,
+        message: `解析を保存しました。${parts.join(" / ")} / 合計 ${totalScore}点`,
       };
+    };
+
+    const clearAllData = () => {
+      setPersisted({ ...fallbackState });
     };
 
     return {
@@ -146,6 +168,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setSelectedThrow,
       setSelectedBodyPart,
       saveDetailAnalysis,
+      clearAllData,
     };
   }, [persisted, ready, selectedBodyPart, selectedThrow]);
 

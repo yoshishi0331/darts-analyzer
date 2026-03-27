@@ -1,4 +1,4 @@
-import { StyleSheet, Text } from "react-native";
+import { Alert, Pressable, StyleSheet, Text } from "react-native";
 
 import { Card } from "@/components/Card";
 import { LabeledSwitchRow } from "@/components/LabeledSwitchRow";
@@ -12,7 +12,26 @@ export function SettingsScreen() {
     settings,
     setHandedness,
     setFutureFaceMaskEnabled,
+    clearAllData,
   } = useAppState();
+
+  const handleDeleteAll = () => {
+    Alert.alert(
+      "データをすべて削除しますか？",
+      "記録・スコアがすべて削除されます。この操作は元に戻せません。",
+      [
+        { text: "キャンセル", style: "cancel" },
+        {
+          text: "削除する",
+          style: "destructive",
+          onPress: () => {
+            clearAllData();
+            Alert.alert("削除しました");
+          },
+        },
+      ],
+    );
+  };
 
   return (
     <Screen title="設定" subtitle="研究条件と保存ポリシーをここで管理">
@@ -37,6 +56,13 @@ export function SettingsScreen() {
           onValueChange={setFutureFaceMaskEnabled}
         />
       </Card>
+
+      <Pressable
+        onPress={handleDeleteAll}
+        style={({ pressed }) => [styles.deleteBtn, pressed && styles.deleteBtnPressed]}
+      >
+        <Text style={styles.deleteBtnText}>データをすべて削除</Text>
+      </Pressable>
     </Screen>
   );
 }
@@ -51,5 +77,20 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     color: colors.textSecondary,
+  },
+  deleteBtn: {
+    minHeight: 52,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(229, 115, 115, 0.45)",
+    marginTop: 8,
+  },
+  deleteBtnPressed: { opacity: 0.6 },
+  deleteBtnText: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#E57373",
   },
 });

@@ -7,7 +7,7 @@ import { Card } from "@/components/Card";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { Screen } from "@/components/Screen";
 import { Stars } from "@/components/Stars";
-import { toStars } from "@/domain/scoring";
+import { calcRecordTotalScore, getRank, toStars } from "@/domain/scoring";
 import { AnalysisRecord } from "@/domain/types";
 import { RootTabParamList } from "@/navigation/AppNavigator";
 import { useAppState } from "@/state/AppProvider";
@@ -34,27 +34,6 @@ function scores(
 function averageOrNull(values: number[]): number | null {
   if (values.length === 0) return null;
   return Math.round(values.reduce((sum, v) => sum + v, 0) / values.length);
-}
-
-function calcFormScore(
-  grouping: number | null,
-  release: number | null,
-  aim: number | null,
-): number | null {
-  if (grouping === null && release === null && aim === null) return null;
-  return Math.round(
-    (grouping ?? 0) * 0.4 + (release ?? 0) * 0.4 + (aim ?? 0) * 0.2,
-  );
-}
-
-function getRank(score: number): Rank {
-  if (score >= 90) return "SS";
-  if (score >= 82) return "S";
-  if (score >= 74) return "A+";
-  if (score >= 66) return "A";
-  if (score >= 58) return "B+";
-  if (score >= 50) return "B";
-  return "C";
 }
 
 function formatMonthTitle(date = new Date()): string {
@@ -187,7 +166,7 @@ export function CalendarScreen({ navigation }: Props) {
   const groupingScore = averageOrNull(scores(detailRecords, "groupingScore"));
   const releaseScore = averageOrNull(scores(selectedRecords, "releaseStabilityScore"));
   const aimScore = averageOrNull(scores(detailRecords, "aimAccuracyScore"));
-  const summaryScore = calcFormScore(groupingScore, releaseScore, aimScore);
+  const summaryScore = calcRecordTotalScore(groupingScore, releaseScore, aimScore);
   const selectedRank = summaryScore !== null ? getRank(summaryScore) : null;
 
   return (
@@ -221,7 +200,7 @@ export function CalendarScreen({ navigation }: Props) {
             const dayGrouping = averageOrNull(scores(dayDetails, "groupingScore"));
             const dayRelease = averageOrNull(scores(dayRecords, "releaseStabilityScore"));
             const dayAim = averageOrNull(scores(dayDetails, "aimAccuracyScore"));
-            const dayScore = calcFormScore(dayGrouping, dayRelease, dayAim);
+            const dayScore = calcRecordTotalScore(dayGrouping, dayRelease, dayAim);
 
             return (
               <CalendarCell

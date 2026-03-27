@@ -2,22 +2,22 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { ResearchCanvas } from "@/components/ResearchCanvas";
 import { Stars } from "@/components/Stars";
-import { TARGET_POINTS } from "@/components/detail/TargetScreen";
+import { TARGET_POINTS } from "@/domain/targetPoints";
 import {
   getFeedback,
-  groupingScoreWithMiss,
+  groupingScore,
   scoreFromAimAccuracy,
   scoreFromPointCluster,
   toStars,
 } from "@/domain/scoring";
-import { TargetLabel } from "@/domain/types";
+import { SessionConfig, ThrowWindow } from "@/domain/types";
 import { colors } from "@/theme/colors";
-
-import type { ThrowWindow } from "./SegmentScreen";
 
 type Props = {
   throwWindows: ThrowWindow[];
-  targetLabel: TargetLabel | null;
+  sessionConfig: SessionConfig;
+  stepNumber: number;
+  totalSteps: number;
   onBack: () => void;
   onProceed: () => void;
 };
@@ -39,47 +39,55 @@ function ScoreRow({ label, score }: { label: string; score: number }) {
   );
 }
 
-export function CompareScreen({ throwWindows, targetLabel, onBack, onProceed }: Props) {
+export function CompareScreen({ throwWindows, sessionConfig, stepNumber, totalSteps, onBack, onProceed }: Props) {
   const boardHits = throwWindows.map((w) => w.impactPoint ?? { x: 0.5, y: 0.5 });
   const releasePoints = throwWindows.map((w) => w.releasePoint);
 
-  const targetPoint = targetLabel != null ? TARGET_POINTS[targetLabel] : null;
+  const targetPoint = sessionConfig.targetLabel != null ? TARGET_POINTS[sessionConfig.targetLabel] : null;
 
-  const { score: groupingScore, missFlag } = groupingScoreWithMiss(boardHits, GROUPING_SCALE);
-  const releaseScore = scoreFromPointCluster(releasePoints, RELEASE_SCALE);
-  const aimScore = targetPoint != null
+  const gScore = sessionConfig.measureGrouping
+    ? groupingScore(boardHits, GROUPING_SCALE)
+    : null;
+  const releaseScore = sessionConfig.measureRelease
+    ? scoreFromPointCluster(releasePoints, RELEASE_SCALE)
+    : null;
+  const aimScore = sessionConfig.measureAim && targetPoint != null
     ? scoreFromAimAccuracy(boardHits, targetPoint, AIM_SCALE)
     : null;
 
   const feedback = getFeedback({
     releaseScore,
-    groupingScore,
+    groupingScore: gScore,
     aimScore,
     boardHits,
     targetPoint: targetPoint ?? null,
+    measuredMetrics: {
+      grouping: sessionConfig.measureGrouping,
+      release: sessionConfig.measureRelease,
+      aim: sessionConfig.measureAim,
+    },
   });
 
   return (
     <View style={styles.wrapper}>
       {/* Step header */}
-      <Text style={styles.stepText}>ステップ 5/5　比較・分析</Text>
+      <Text style={styles.stepText}>ステップ {stepNumber}/{totalSteps}　比較・分析</Text>
 
       {/* Research canvas */}
-      <ResearchCanvas boardHits={boardHits} releasePoints={releasePoints} />
+      <ResearchCanvas
+        boardHits={boardHits}
+        releasePoints={releasePoints}
+        showRelease={sessionConfig.measureRelease}
+        showBoard={sessionConfig.measureGrouping || sessionConfig.measureAim}
+      />
 
       {/* Score section */}
       <View style={styles.scoreCard}>
         <Text style={styles.scoreCardTitle}>スコア</Text>
 
-        <ScoreRow label="グルーピング" score={groupingScore} />
-        <ScoreRow label="リリース安定" score={releaseScore} />
-        {aimScore !== null && (
-          <ScoreRow label="狙い精度" score={aimScore} />
-        )}
-
-        {missFlag && (
-          <Text style={styles.missWarn}>⚠ 1投だけ外れています</Text>
-        )}
+        {gScore !== null && <ScoreRow label="グルーピング" score={gScore} />}
+        {releaseScore !== null && <ScoreRow label="リリース安定" score={releaseScore} />}
+        {aimScore !== null && <ScoreRow label="狙い精度" score={aimScore} />}
       </View>
 
       <Text style={styles.note}>※ スコアは目安です</Text>
@@ -127,13 +135,6 @@ const styles = StyleSheet.create({
   scoreRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   scoreLabel: { width: 80, fontSize: 13, fontWeight: "600", color: colors.text },
   scoreValue: { marginLeft: "auto", fontSize: 13, fontWeight: "800", color: colors.text },
-
-  missWarn: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#F0A040",
-    marginTop: 2,
-  },
 
   note: { fontSize: 11, color: colors.textSecondary, textAlign: "center", marginTop: -4 },
 

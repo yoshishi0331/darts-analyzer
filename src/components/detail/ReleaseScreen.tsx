@@ -7,11 +7,9 @@ import { TextToggle } from "@/components/TextToggle";
 import { ThrowTabs } from "@/components/ThrowTabs";
 import { VideoPlayerView } from "@/components/VideoPlayerView";
 import { VideoPoseAnalysis } from "@/domain/videoPoseAnalyzer";
-import { ThrowIndex } from "@/domain/types";
+import { ThrowIndex, ThrowWindow } from "@/domain/types";
 import { colors } from "@/theme/colors";
 import { spacing } from "@/theme/spacing";
-
-import type { ThrowWindow } from "./SegmentScreen";
 
 type Props = {
   player: VideoPlayer;
@@ -19,6 +17,8 @@ type Props = {
   throws: ThrowWindow[];
   activeIndex: ThrowIndex;
   analysis: VideoPoseAnalysis | null;
+  stepNumber: number;
+  totalSteps: number;
   onUpdateThrow: (index: ThrowIndex, patch: Partial<ThrowWindow>) => void;
   onSelectThrow: (index: ThrowIndex) => void;
   onBack: () => void;
@@ -40,6 +40,8 @@ export function ReleaseScreen({
   throws,
   activeIndex,
   analysis,
+  stepNumber,
+  totalSteps,
   onUpdateThrow,
   onSelectThrow,
   onBack,
@@ -148,7 +150,7 @@ export function ReleaseScreen({
   return (
     <View style={styles.wrapper}>
       {/* Step header */}
-      <Text style={styles.stepText}>ステップ 2/5　リリース点を記録する</Text>
+      <Text style={styles.stepText}>ステップ {stepNumber}/{totalSteps}　リリース点を記録する</Text>
 
       {/* Video — full bleed */}
       <View style={[styles.fullBleedSection, { marginHorizontal: -spacing.md }]}>
@@ -254,7 +256,7 @@ export function ReleaseScreen({
           <Text style={styles.actionText}>戻る</Text>
         </Pressable>
         <Pressable onPressIn={onProceed} style={[styles.actionBtn, styles.proceedBtn]}>
-          <Text style={styles.actionText}>狙いを選択へ</Text>
+          <Text style={styles.actionText}>次へ</Text>
         </Pressable>
       </View>
     </View>

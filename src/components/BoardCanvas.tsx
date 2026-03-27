@@ -27,6 +27,7 @@ type BoardCanvasProps = {
   onDragPoint?: (index: number, point: Point) => void;
   markerSize?: number;
   markerOffset?: number;
+  throwIndices?: number[];
 };
 
 function clamp(value: number, min: number, max: number): number {
@@ -65,6 +66,7 @@ export function BoardCanvas({
   onDragPoint,
   markerSize = 20,
   markerOffset = 0,
+  throwIndices,
 }: BoardCanvasProps) {
   const [bounds, setBounds] = useState<Bounds | null>(null);
   const boardRef = useRef<View>(null);
@@ -118,7 +120,7 @@ export function BoardCanvas({
         ) : null}
 
         {points.map((point, index) => {
-          const throwIndex = markerOffset + index;
+          const throwIndex = throwIndices ? throwIndices[index]! : markerOffset + index;
           const resolvedMarkerSize = activeIndex === index ? activeMarkerSize : inactiveMarkerSize;
 
           return (

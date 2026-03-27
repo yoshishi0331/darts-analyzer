@@ -4,14 +4,14 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { BoardInput } from "@/components/BoardInput";
 import { DPad } from "@/components/DPad";
 import { ThrowTabs } from "@/components/ThrowTabs";
-import { ThrowIndex } from "@/domain/types";
+import { ThrowIndex, ThrowWindow } from "@/domain/types";
 import { colors } from "@/theme/colors";
-
-import type { ThrowWindow } from "./SegmentScreen";
 
 type Props = {
   throws: ThrowWindow[];
   activeIndex: ThrowIndex;
+  stepNumber: number;
+  totalSteps: number;
   onUpdateThrow: (index: ThrowIndex, patch: Partial<ThrowWindow>) => void;
   onSelectThrow: (index: ThrowIndex) => void;
   onBack: () => void;
@@ -23,6 +23,8 @@ const CENTER = { x: 0.5, y: 0.5 };
 export function LandingScreen({
   throws,
   activeIndex,
+  stepNumber,
+  totalSteps,
   onUpdateThrow,
   onSelectThrow,
   onBack,
@@ -31,8 +33,16 @@ export function LandingScreen({
   // Local override so we can toggle "all 3 visible" vs "active only"
   const [showAll, setShowAll] = useState(true);
 
-  // Build points array: use impactPoint if set, otherwise center
-  const points = throws.map((t) => t.impactPoint ?? CENTER);
+  // showAll=true: 入力済み投 + activeのみ表示（nullの非active投は非表示）
+  const displayEntries = showAll
+    ? throws
+        .map((t, i) => ({ point: t.impactPoint ?? CENTER, origIndex: i, show: t.impactPoint !== null || i === activeIndex }))
+        .filter((e) => e.show)
+    : [{ point: throws[activeIndex].impactPoint ?? CENTER, origIndex: activeIndex, show: true }];
+
+  const boardPoints = displayEntries.map((e) => e.point);
+  const boardActiveIndex = displayEntries.findIndex((e) => e.origIndex === activeIndex);
+  const boardThrowIndices = displayEntries.map((e) => e.origIndex);
 
   const handleSelectPoint = (point: { x: number; y: number }) => {
     onUpdateThrow(activeIndex, { impactPoint: point });
@@ -47,7 +57,7 @@ export function LandingScreen({
   return (
     <View style={styles.wrapper}>
       {/* Step header */}
-      <Text style={styles.stepText}>ステップ 4/5　着弾点を記録する</Text>
+      <Text style={styles.stepText}>ステップ {stepNumber}/{totalSteps}　着弾点を記録する</Text>
       <Text style={styles.hintText}>ダーツが刺さった位置をタップしてください</Text>
 
       {/* Throw tabs */}
@@ -55,13 +65,13 @@ export function LandingScreen({
 
       {/* Board canvas */}
       <BoardInput
-        points={showAll ? points : [points[activeIndex]]}
-        activeIndex={showAll ? activeIndex : 0}
-        markerOffset={showAll ? 0 : activeIndex}
+        points={boardPoints}
+        activeIndex={boardActiveIndex}
+        throwIndices={boardThrowIndices}
         onSelectPoint={handleSelectPoint}
         onDragPoint={(index, point) => {
-          const realIndex = showAll ? index : activeIndex;
-          handleDragPoint(realIndex, point);
+          const realIndex = boardThrowIndices[index] ?? activeIndex;
+          handleDragPoint(realIndex as ThrowIndex, point);
         }}
       />
 

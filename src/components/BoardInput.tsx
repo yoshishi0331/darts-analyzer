@@ -10,6 +10,7 @@ type BoardInputProps = {
   onSelectPoint: (point: Point) => void;
   onDragPoint: (index: number, point: Point) => void;
   markerOffset?: number;
+  throwIndices?: number[];
 };
 
 export function BoardInput({
@@ -18,6 +19,7 @@ export function BoardInput({
   onSelectPoint,
   onDragPoint,
   markerOffset = 0,
+  throwIndices,
 }: BoardInputProps) {
   return (
     <View style={styles.wrapper}>
@@ -27,6 +29,7 @@ export function BoardInput({
         onSelectPoint={onSelectPoint}
         onDragPoint={onDragPoint}
         markerOffset={markerOffset}
+        throwIndices={throwIndices}
       />
       <Text style={styles.caption}>
         {"\u7740\u5f3e\u70b9\u5165\u529b / "}
