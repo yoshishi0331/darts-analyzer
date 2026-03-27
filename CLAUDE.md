@@ -14,9 +14,21 @@
 - ホーム画面：フォームランク表示・星表示・直近10件平均
 - フィードバックロジック追加（scoring.ts）
 - CalendarScreen：formScore=90のハードコード削除
+- segmentステップ削除（SegmentScreen.tsx削除）
+- targetステップ削除、SessionSetupScreen.tsx新規作成
+  - 狙い選択（ブル/20/19/18/17/16/15）横グリッド
+  - 測定項目ON/OFF（グルーピング/リリース安定/狙い精度）
+  - バリデーション：最低1項目ON、狙い精度ON時は狙い選択必須
+  - リリース安定OFFの場合は動画選択をスキップ
+- 測定項目に応じたステップ動的生成（activeSteps）
+- ステップ番号を動的表示（1/2、2/3など）
+- スコア計算をscoring.tsに統一（HomeScreen・CalendarScreen共通）
+- 測定した指標のみで重みを割り直すロジック実装
+- getFeedback()にmeasuredMetrics追加、測定指標のみでフィードバック生成
+- 設定画面にデータ全削除ボタン追加（確認ダイアログ・state同時リセット）
 
 ### 次にやること（Claude Codeへの依頼）
-→ 下部「実装依頼リスト」を参照
+- ホーム画面の各スコアが甘すぎるためscale値を下方修正（実機データを元に調整）
 
 ### 実機確認待ち・要調整
 - グルーピングスコアの閾値（コード内 `// TODO: 閾値3は仮設定`）
@@ -173,38 +185,10 @@ BoardCanvasの正規化座標系（左上0,0・右下1,1・中心0.5,0.5）基�
 - elbowPoints（削除予定）
 - segmentステップ（廃止・削除対象）
 - targetステップ（廃止・セッション設定画面に統合）
+- SegmentScreen.tsx（削除済み）
+- TargetScreen.tsx（削除済み、セッション設定に統合）
 
 ---
-
-## 実装依頼リスト（Claude Code用）
-
-### タスク1：segmentステップの削除
-- SegmentScreen.tsx を削除
-- DetailAnalysisScreen.tsx のstage='segment'を削除
-- 解析開始時の初期stageを'release'に変更
-
-### タスク2：セッション設定画面の新規作成
-- SessionSetupScreen.tsx を新規作成
-- 狙い選択（ブル/20/19/18/17/16/15）横グリッド
-- 測定項目のON/OFF（グルーピング・リリース安定・狙い精度）
-- 選択状態をセッション中保持（AppProviderまたはuseStateで管理）
-- バリデーション：最低1項目ON、狙い精度ON時は狙い選択必須
-- Primary CTAボタン「動画を選ぶ →」下部固定
-
-### タスク3：targetステップの削除
-- TargetScreen.tsx を削除
-- DetailAnalysisScreen.tsx のstage='target'を削除
-
-### タスク4：ステップの動的生成
-- 測定項目の選択に応じてステップを動的に構成
-  - リリース安定ON → releaseステップを含む
-  - グルーピング or 狙い精度ON → landingステップを含む
-- ステップ番号表示は「1/3」「2/3」など動的に変わるようにする
-
-### タスク5：スコア計算の修正
-- 測定した指標のみで重みを割り直すロジックをscoring.tsに追加
-- ホーム画面：指標ごとに直近N件平均を取る集計ロジックに変更
-- データがない指標は「--」表示
 
 ---
 
