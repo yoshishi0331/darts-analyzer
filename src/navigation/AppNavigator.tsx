@@ -71,8 +71,8 @@ export function AppNavigator() {
     >
       <Tab.Screen name="Home" component={HomeScreen} options={{ title: "ホーム" }} />
       <Tab.Screen name="Detail" component={DetailAnalysisScreen} options={{ title: "解析" }} />
+      {/* QuickRecord: 音声入力が安定したら復活 → <Tab.Screen name="QuickRecord" component={QuickRecordScreen} options={{ title: "クイック記録" }} /> */}
       <Tab.Screen name="Calendar" component={CalendarScreen} options={{ title: "記録" }} />
-      <Tab.Screen name="QuickRecord" component={QuickRecordScreen} options={{ title: "クイック記録" }} />
       <Tab.Screen name="Settings" component={SettingsScreen} options={{ title: "設定" }} />
     </Tab.Navigator>
   );

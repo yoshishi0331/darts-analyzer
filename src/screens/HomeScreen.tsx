@@ -305,6 +305,11 @@ export function HomeScreen({ navigation }: Props) {
           size="large"
           onPress={() => navigation.navigate("Detail")}
         />
+        {/* QuickRecord: 音声入力が安定したら復活
+        <PrimaryButton
+          label="クイック記録 🎤"
+          onPress={() => navigation.navigate("QuickRecord")}
+        /> */}
       </View>
 
       <View style={styles.bottomSpacer} />
