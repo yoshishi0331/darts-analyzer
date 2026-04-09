@@ -11,6 +11,9 @@ import { ThrowIndex, ThrowWindow } from "@/domain/types";
 import { colors } from "@/theme/colors";
 import { spacing } from "@/theme/spacing";
 
+// TODO: 腕角度計測機能は一時的に非表示（再開時は ARM_ANGLE_ENABLED を true に戻す）
+const ARM_ANGLE_ENABLED = false;
+
 // 肘関節角：（肘→肩）ベクトルと（肘→手首）ベクトルのなす角
 // L字（肘90°） → 90°
 // 引いた状態（テイクバック） → <90°
@@ -397,7 +400,7 @@ onUpdateArmData(activeIndex, pendingShoulder, pendingElbow, previewPoint, angle)
       <ThrowTabs activeIndex={activeIndex} onSelect={handleSelectThrow} />
 
       {/* 腕を記録するボタン（任意・リリース記録済みの場合のみ表示・再タップで編集） */}
-      {isReleaseRecorded && armCapture === null && (
+      {ARM_ANGLE_ENABLED && isReleaseRecorded && armCapture === null && (
         <Pressable
           onPressIn={() => {
             setPendingShoulder(null);
