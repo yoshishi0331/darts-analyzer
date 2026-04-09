@@ -18,11 +18,6 @@ const MEDAL_OUTER = 152;   // halo ring diameter
 const MEDAL_RING  = 134;   // main ring diameter
 const MEDAL_R     = MEDAL_RING / 2;
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
-function average(values: number[]): number {
-  if (values.length === 0) return 0;
-  return Math.round(values.reduce((sum, v) => sum + v, 0) / values.length);
-}
 
 // ── RankMedal ────────────────────────────────────────────────────────────────
 /**
@@ -188,7 +183,7 @@ function StatusHero({
     >
       {/* Heading */}
       <Text style={styles.heroHeading}>フォームランク</Text>
-      <Text style={styles.heroCaption}>直近10件の平均</Text>
+      <Text style={styles.heroCaption}>最新セッション</Text>
 
       {/* Medal + Score */}
       <View style={styles.heroCenter}>
@@ -213,7 +208,7 @@ function StatusHero({
 
       {/* Meta */}
       <Text style={styles.heroMeta}>
-        直近 7 件ベース / 前回比{" "}
+        前回比{" "}
         <Text style={[styles.heroMetaAccent, { color: palette.accent }]}>
           {delta >= 0 ? `+${delta}` : delta}
         </Text>
@@ -269,36 +264,23 @@ function recordTotalScore(r: AnalysisRecord): number {
 
 export function HomeScreen({ navigation }: Props) {
   const { records } = useAppState();
-  const recentDetailRecords = records
-    .filter((r) => r.mode === "detail")
-    .slice(0, 10);
+  const detailRecords = records.filter((r) => r.mode === "detail");
+  const latestRecord = detailRecords[0] ?? null;
+  const prevRecord   = detailRecords[1] ?? null;
 
-  // 各指標は測定したセッションのみから平均。データなし→undefined（「--」表示）
-  const releaseScoreValues = recentDetailRecords
-    .map((r) => r.releaseStabilityScore)
-    .filter((s): s is number => typeof s === "number");
-  const releaseScore = releaseScoreValues.length > 0 ? average(releaseScoreValues) : undefined;
+  // 最新1セッションのスコア。未測定はundefined→「--」表示
+  const groupingScore        = latestRecord?.groupingScore        ?? undefined;
+  const releaseScore         = latestRecord?.releaseStabilityScore ?? undefined;
+  const aimScore             = latestRecord?.aimAccuracyScore      ?? undefined;
 
-  const groupingScoreValues = recentDetailRecords
-    .map((r) => r.groupingScore)
-    .filter((s): s is number => typeof s === "number");
-  const groupingScore = groupingScoreValues.length > 0 ? average(groupingScoreValues) : undefined;
-
-  const aimScoreValues = recentDetailRecords
-    .map((r) => r.aimAccuracyScore)
-    .filter((s): s is number => typeof s === "number");
-  const aimScore = aimScoreValues.length > 0 ? average(aimScoreValues) : undefined;
-
-  const formScore = recentDetailRecords.length > 0
-    ? average(recentDetailRecords.map(recordTotalScore))
+  const overallScore = latestRecord
+    ? calcRecordTotalScore(latestRecord.groupingScore, latestRecord.releaseStabilityScore, latestRecord.aimAccuracyScore) ?? 0
     : 0;
 
-  const delta =
-    recentDetailRecords.length >= 2
-      ? recordTotalScore(recentDetailRecords[0]!) - recordTotalScore(recentDetailRecords[1]!)
-      : 0;
+  const delta = latestRecord && prevRecord
+    ? recordTotalScore(latestRecord) - recordTotalScore(prevRecord)
+    : 0;
 
-  const overallScore = formScore;
   const rank = getScoringRank(overallScore);
 
   return (

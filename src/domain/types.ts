@@ -29,7 +29,10 @@ export type TargetLabel = "bull" | "20" | "19" | "18" | "17" | "16" | "15";
 export type DetailInputState = {
   boardHits: Point[];
   releasePoints: Point[];
-  elbowPoints: Point[];
+  elbowPoints: Array<Point | null>;     // 3投分、未記録はnull
+  wristPoints?: Array<Point | null>;    // 3投分、未記録はnull（v1.1）
+  shoulderPoints?: Array<Point | null>; // 3投分、未記録はnull（v1.1 3点計測）
+  armAngles?: Array<number | null>;     // 3投分の腕角度（度数）、未記録はnull（v1.1）
   targetLabel?: TargetLabel;
   targetPoint?: Point | null;
 };

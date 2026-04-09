@@ -36,6 +36,13 @@ type Props = {
   hasVideo: boolean;
   style?: StyleProp<ViewStyle>;
   onTapRelease?: (point: { x: number; y: number }, timeMillis: number) => void;
+  // 腕角度オーバーレイ（v1.1 3点計測）
+  armCapture?: "shoulder" | "elbow" | "wrist" | null;
+  activeShoulder?: { x: number; y: number } | null;
+  activeElbow?: { x: number; y: number } | null;
+  activeWrist?: { x: number; y: number } | null;
+  activeArmAngle?: number | null;
+  onTapArm?: (point: { x: number; y: number }) => void;
 };
 
 function hasRange(t: ThrowDraft) {
@@ -57,6 +64,12 @@ export const VideoPlayerView = memo(function VideoPlayerView({
   hasVideo,
   style,
   onTapRelease,
+  armCapture = null,
+  activeShoulder = null,
+  activeElbow = null,
+  activeWrist = null,
+  activeArmAngle = null,
+  onTapArm,
 }: Props) {
   const containerRef = useRef<View>(null);
   const [bounds, setBounds] = useState<Bounds | null>(null);
@@ -200,20 +213,90 @@ export const VideoPlayerView = memo(function VideoPlayerView({
             })
           : null}
 
-        {/* Tap to place release point */}
-        {mode === "release" && isPaused && hasVideo ? (
+        {/* Tap to place release point or arm point（再生中も受け付ける） */}
+        {mode === "release" && hasVideo ? (
           <Pressable
             style={StyleSheet.absoluteFill}
             onPress={(e) => {
-              if (!bounds || !onTapRelease) return;
-              onTapRelease(
-                {
-                  x: clamp01(e.nativeEvent.locationX / bounds.width),
-                  y: clamp01(e.nativeEvent.locationY / bounds.height),
-                },
-                currentTimeMillis,
-              );
+              if (!bounds) return;
+              const point = {
+                x: clamp01(e.nativeEvent.locationX / bounds.width),
+                y: clamp01(e.nativeEvent.locationY / bounds.height),
+              };
+              if (armCapture != null) {
+                onTapArm?.(point);
+              } else {
+                onTapRelease?.(point, currentTimeMillis);
+              }
             }}
+          />
+        ) : null}
+
+        {/* Arm angle overlay: 2 lines + 3 dots */}
+        {bounds && (() => {
+          const lineColor = (activeArmAngle ?? 0) >= 95 ? "#D86A6C" : "#49A37E";
+          const renderSegment = (
+            from: { x: number; y: number },
+            to: { x: number; y: number },
+            key: string,
+          ) => {
+            const dx = (to.x - from.x) * bounds.width;
+            const dy = (to.y - from.y) * bounds.height;
+            const len = Math.sqrt(dx * dx + dy * dy);
+            if (len < 1) return null;
+            const angle = Math.atan2(dy, dx);
+            const mx = (from.x + to.x) / 2;
+            const my = (from.y + to.y) / 2;
+            return (
+              <View
+                key={key}
+                style={[styles.armLineWrap, {
+                  left: `${mx * 100}%`,
+                  top: `${my * 100}%`,
+                  width: len,
+                  transform: [{ translateX: -(len / 2) }, { rotate: `${angle}rad` }],
+                }]}
+                pointerEvents="none"
+              >
+                <View style={[styles.armLine, { backgroundColor: lineColor }]} />
+              </View>
+            );
+          };
+          return (
+            <>
+              {activeShoulder && activeElbow ? renderSegment(activeShoulder, activeElbow, "arm-upper") : null}
+              {activeElbow && activeWrist ? renderSegment(activeElbow, activeWrist, "arm-lower") : null}
+            </>
+          );
+        })()}
+        {activeShoulder ? (
+          <View
+            key="arm-shoulder"
+            style={[styles.armDot, {
+              left: `${activeShoulder.x * 100}%`,
+              top: `${activeShoulder.y * 100}%`,
+            }]}
+            pointerEvents="none"
+          />
+        ) : null}
+        {activeElbow ? (
+          <View
+            key="arm-elbow"
+            style={[styles.armDot, {
+              left: `${activeElbow.x * 100}%`,
+              top: `${activeElbow.y * 100}%`,
+            }]}
+            pointerEvents="none"
+          />
+        ) : null}
+        {activeWrist ? (
+          <View
+            key="arm-wrist"
+            style={[styles.armDot, {
+              left: `${activeWrist.x * 100}%`,
+              top: `${activeWrist.y * 100}%`,
+            }]}
+            pointerEvents="none"
           />
         ) : null}
 
@@ -296,4 +379,21 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   markerText: { color: "#FFFFFF", fontSize: 10, fontWeight: "800" },
+  // 腕角度オーバーレイ
+  armLineWrap: { position: "absolute", height: 4, justifyContent: "center" },
+  armLine: { position: "absolute", height: 2.5, width: "100%", borderRadius: 999, opacity: 0.9 },
+  armDot: {
+    position: "absolute",
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: "#F4C542",
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.85)",
+    transform: [{ translateX: -7 }, { translateY: -7 }],
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 4,
+  },
 });

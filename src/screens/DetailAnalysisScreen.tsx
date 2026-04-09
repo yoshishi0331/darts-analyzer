@@ -12,7 +12,8 @@ import { LandingScreen } from "@/components/detail/LandingScreen";
 import { ReleaseScreen } from "@/components/detail/ReleaseScreen";
 import { TARGET_POINTS } from "@/domain/targetPoints";
 import { analyzeVideoPose, VideoPoseAnalysis } from "@/domain/videoPoseAnalyzer";
-import { Handedness, SessionConfig, ThrowIndex, ThrowWindow } from "@/domain/types";
+import { Handedness, Point, SessionConfig, ThrowIndex, ThrowWindow } from "@/domain/types";
+import { getMedianAngle } from "@/domain/scoring";
 import { RootTabParamList } from "@/navigation/AppNavigator";
 import { useAppState } from "@/state/AppProvider";
 
@@ -35,13 +36,35 @@ function createInitialWindows(): ThrowWindow[] {
 }
 
 export function DetailAnalysisScreen({ navigation }: Props) {
-  const { settings, selectedThrow, setSelectedThrow, saveDetailAnalysis } = useAppState();
+  const { settings, selectedThrow, setSelectedThrow, saveDetailAnalysis, records } = useAppState();
+
+  const recentSessions = useMemo(() => {
+    return records.slice(0, 3).map((r) => {
+      const angles = r.detailInputState?.armAngles ?? null;
+      const median = getMedianAngle(angles);
+      const armAngleLate = median !== null && median > 97;
+
+      const hits = r.detailInputState?.boardHits ?? [];
+      const target = r.detailInputState?.targetPoint ?? null;
+      const dropped =
+        hits.length >= 3 &&
+        target !== null &&
+        hits.reduce((s, p) => s + p.y, 0) / hits.length - target.y > 0.02;
+
+      return { dropped, armAngleLate };
+    });
+  }, [records]);
 
   const [videoUri, setVideoUri] = useState<string | undefined>();
   const [stage, setStage] = useState<DetailStage>("setup");
   const [sessionConfig, setSessionConfig] = useState<SessionConfig>(DEFAULT_SESSION_CONFIG);
   const [throwWindows, setThrowWindows] = useState<ThrowWindow[]>(() => createInitialWindows());
   const [analysis, setAnalysis] = useState<VideoPoseAnalysis | null>(null);
+  // 腕角度計測データ（v1.1 3点計測）
+  const [shoulderPoints, setShoulderPoints] = useState<Array<Point | null>>([null, null, null]);
+  const [elbowPoints, setElbowPoints] = useState<Array<Point | null>>([null, null, null]);
+  const [wristPoints, setWristPoints] = useState<Array<Point | null>>([null, null, null]);
+  const [armAngles, setArmAngles] = useState<Array<number | null>>([null, null, null]);
 
   const player = useVideoPlayer(null, (p) => {
     p.loop = false;
@@ -134,6 +157,7 @@ export function DetailAnalysisScreen({ navigation }: Props) {
       setVideoUri(result.assets[0].uri);
       setSelectedThrow(0);
       setThrowWindows(createInitialWindows());
+      resetArmData();
       setStage("release");
     } else {
       // 動画不要: 直接 landing へ（グルーピング or 狙い精度のみ）
@@ -141,6 +165,7 @@ export function DetailAnalysisScreen({ navigation }: Props) {
       setVideoUri(undefined);
       setSelectedThrow(0);
       setThrowWindows(createInitialWindows());
+      resetArmData();
       setStage("landing");
     }
   };
@@ -149,6 +174,26 @@ export function DetailAnalysisScreen({ navigation }: Props) {
     setThrowWindows((current) =>
       current.map((item, i) => (i === index ? { ...item, ...patch } : item)),
     );
+  };
+
+  const handleUpdateArmData = (
+    index: ThrowIndex,
+    shoulder: Point,
+    elbow: Point,
+    wrist: Point,
+    angle: number,
+  ) => {
+    setShoulderPoints((prev) => prev.map((v, i) => (i === index ? shoulder : v)));
+    setElbowPoints((prev) => prev.map((v, i) => (i === index ? elbow : v)));
+    setWristPoints((prev) => prev.map((v, i) => (i === index ? wrist : v)));
+    setArmAngles((prev) => prev.map((v, i) => (i === index ? angle : v)));
+  };
+
+  const resetArmData = () => {
+    setShoulderPoints([null, null, null]);
+    setElbowPoints([null, null, null]);
+    setWristPoints([null, null, null]);
+    setArmAngles([null, null, null]);
   };
 
   const handleReleaseProceed = () => {
@@ -177,7 +222,10 @@ export function DetailAnalysisScreen({ navigation }: Props) {
       detailInputState: {
         boardHits,
         releasePoints,
-        elbowPoints: [],
+        shoulderPoints,
+        elbowPoints,
+        wristPoints,
+        armAngles,
         targetLabel: sessionConfig.targetLabel ?? undefined,
         targetPoint: resolvedTargetPoint ?? undefined,
       },
@@ -195,6 +243,7 @@ export function DetailAnalysisScreen({ navigation }: Props) {
             setThrowWindows(createInitialWindows());
             setVideoUri(undefined);
             setSessionConfig(DEFAULT_SESSION_CONFIG);
+            resetArmData();
             navigation.navigate("Home");
           }
         },
@@ -225,6 +274,11 @@ export function DetailAnalysisScreen({ navigation }: Props) {
           onSelectThrow={(i) => setSelectedThrow(i)}
           onBack={() => setStage("setup")}
           onProceed={handleReleaseProceed}
+          shoulderPoints={shoulderPoints}
+          elbowPoints={elbowPoints}
+          wristPoints={wristPoints}
+          armAngles={armAngles}
+          onUpdateArmData={handleUpdateArmData}
         />
       ) : stage === "landing" ? (
         <LandingScreen
@@ -250,6 +304,11 @@ export function DetailAnalysisScreen({ navigation }: Props) {
           sessionConfig={sessionConfig}
           stepNumber={stepNumber}
           totalSteps={totalSteps}
+          armAngles={armAngles}
+          shoulderPoints={shoulderPoints}
+          elbowPoints={elbowPoints}
+          wristPoints={wristPoints}
+          recentSessions={recentSessions}
           onBack={() => {
             if (sessionConfig.measureGrouping || sessionConfig.measureAim) {
               setStage("landing");
