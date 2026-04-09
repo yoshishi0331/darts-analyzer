@@ -71,7 +71,14 @@ function normalizeRecord(record: AnalysisRecord): AnalysisRecord {
       ...record.detailInputState,
       boardHits: record.detailInputState.boardHits.map(normalizePoint),
       releasePoints: record.detailInputState.releasePoints.map(normalizePoint),
-      elbowPoints: record.detailInputState.elbowPoints.map(normalizePoint),
+      elbowPoints: (record.detailInputState.elbowPoints ?? []).map((p) =>
+        p === null ? null : normalizePoint(p),
+      ),
+      ...(record.detailInputState.shoulderPoints != null ? {
+        shoulderPoints: record.detailInputState.shoulderPoints.map((p) =>
+          p === null ? null : normalizePoint(p),
+        ),
+      } : {}),
     },
   };
 }

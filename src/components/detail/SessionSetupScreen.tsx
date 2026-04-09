@@ -106,6 +106,7 @@ export function SessionSetupScreen({ config, onConfigChange, onProceed }: Props)
         {config.targetLabel === null && config.measureAim && (
           <Text style={styles.aimWarning}>※ 狙い精度をONにするには狙いの選択が必要です</Text>
         )}
+        <Text style={styles.targetNote}>※ スコアはトリプルを狙った想定で記録されます（ブルを除く）</Text>
       </View>
 
       {/* ── 測定項目 ── */}
@@ -194,6 +195,12 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: "#E57373",
     marginTop: -4,
+  },
+  targetNote: {
+    fontSize: 10,
+    color: colors.textSecondary,
+    opacity: 0.6,
+    marginTop: 6,
   },
 
   // Measure items checklist

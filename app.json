@@ -18,14 +18,17 @@
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "音声入力でダーツの結果を記録するためにマイクを使用します。",
+        "NSSpeechRecognitionUsageDescription": "音声認識でダーツの結果をテキストに変換するために使用します。"
+      }
     },
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#F5F7FA"
       },
       "permissions": [
-        "android.permission.RECORD_AUDIO",
         "android.permission.RECORD_AUDIO"
       ],
       "package": "com.anonymous.dartsanalyzer"

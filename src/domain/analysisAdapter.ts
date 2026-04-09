@@ -1,5 +1,5 @@
 import { Point } from "@/domain/types";
-import { scoreFromAimAccuracy, scoreFromPointCluster } from "@/domain/scoring";
+import { groupingScore, scoreFromAimAccuracy, scoreFromPointCluster } from "@/domain/scoring";
 
 export type AnalysisEngine = {
   computeGroupingScore: (hits: Point[]) => number;
@@ -9,10 +9,10 @@ export type AnalysisEngine = {
 
 // This boundary keeps future MediaPipe or custom CV pipelines swappable.
 export const mockAnalysisEngine: AnalysisEngine = {
-  computeGroupingScore: (hits) => scoreFromPointCluster(hits, 1.6),
+  computeGroupingScore: (hits) => groupingScore(hits, 2.8), // 旧: scoreFromPointCluster(hits, 1.6)
   computeReleaseStabilityScore: (releasePoints) =>
-    scoreFromPointCluster(releasePoints, 1.9),
-  // NOTE: scale 2.0 は要実機調整。距離0.5（ボード幅の半分）で0点になる設定。
+    scoreFromPointCluster(releasePoints, 1.9), // 旧: 2.8（一時変更→仕様通り1.9に戻す）
+  // NOTE: scale は要実機調整。距離0.5（ボード幅の半分）で0点になる設定。
   computeAimAccuracyScore: (hits, targetPoint) =>
-    scoreFromAimAccuracy(hits, targetPoint, 2.0),
+    scoreFromAimAccuracy(hits, targetPoint, 3.2), // 旧: 2.0
 };
