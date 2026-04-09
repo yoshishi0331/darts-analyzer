@@ -105,6 +105,8 @@ export function ReleaseScreen({
   const [playbackRate, setPlaybackRate] = useState<1 | 0.5 | 0.25 | 0.1>(1);
   const [progressWidth, setProgressWidth] = useState(1);
 
+  useEffect(() => { player.playbackRate = 1; }, []);
+
   const throwsRef = useRef(throws);
   throwsRef.current = throws;
   const activeIndexRef = useRef(activeIndex);
