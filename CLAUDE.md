@@ -16,6 +16,9 @@
 - **ライブラリ**: `expo-av` のdeprecation警告はSDK54まで放置でよい。
 - **改行コード**: Windows CRLF問題防止のため、文字列処理時は `.replace(/\r\n/g, '\n')` 等で正規化すること。
 - **AIの振る舞い**: 難しい・不確かなことを「可能」と絶対に断言しないこと。
+- **新アーキテクチャ**: `newArchEnabled=false` を維持すること。`@react-native-voice/voice` が New Architecture 非対応のため。ON に戻すと Manifest merger エラーで音声機能がビルド不能になる。
+- **Jetifier**: `android.enableJetifier=true` を維持すること。`@react-native-voice/voice` が古い `com.android.support` に依存しているため必須。
+- **git除外**: `.claude/settings.local.json` と `.claude/worktrees/` はコミット不要のローカルファイル。
 
 ## 5. ドキュメント振り分けルール
 - **CLAUDE.md**: 不変の制約・地雷・ルールのみ（進捗・履歴は書かない）
